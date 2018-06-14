@@ -1,0 +1,157 @@
+---
+title: 'Regression Models Course Project'
+author: "Gabriel Quintanar"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setoptions, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align='center', fig.width=10)
+library(plyr); library(dplyr)
+library(ggplot2); library(knitr)
+```
+
+## Executive Summary
+This research will show the analysis on the dataset mtcars and address two objectives:
+      - Is an automatic or manual transmission better for MPG?
+      - Quantify the MPG difference between automatic and manual transmissions
+      
+In order to complete the task, some regression analysis will be made to accomplish the objectives.     
+      
+      
+## Loading and Exploratory Analysis
+
+Documentation about the dataset:
+
+### Motor Trend Car Road Tests
+
+Description
+
+The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973-74 models).
+
+Usage
+
+_mtcars_
+
+Format
+
+A data frame with 32 observations on 11 variables.
+
+1.	 mpg	 Miles/(US) gallon
+2.	 cyl	 Number of cylinders
+3.	 disp	 Displacement (cu.in.)
+4.	 hp	 Gross horsepower
+5.	 drat	 Rear axle ratio
+6.	 wt	 Weight (1000 lbs)
+7.	 qsec	 1/4 mile time
+8.	 vs	 V/S
+9.	 am	 Transmission (0 = automatic, 1 = manual)
+10.	 gear	 Number of forward gears
+11.	 carb	 Number of carburetors
+
+
+Here is a summary and the head of _mtcars_ data
+```{r loading}
+data("mtcars")
+kable(head(mtcars, 5))
+summ <- summary(mtcars)
+kable(summ)
+mtcars$am <- factor(mtcars$am)
+levels(mtcars$am)[1] <- "Automatic"
+levels(mtcars$am)[2] <- "Manual"
+nManual <- mtcars %>% filter(am == "Manual") %>% count()
+nAuto <- mtcars %>% filter(am == "Automatic") %>% count()
+Transmission <- levels(mtcars$am)
+tabl <- data.frame(Transmission, Counts = c(nAuto$n, nManual$n))
+kable(tabl)
+```
+
+Our main objectives only needs variables _mpg_ and _am_. Checking the distribution those variables with graphics may lead to a better understanding of the data.
+
+
+With this histograms showed in the figure 1, we see how cars with manual transmission has higher mpg records.
+
+```{r}
+meanAuto <- mtcars %>% filter(am == "Automatic") %>% summarise(mean = mean(mpg))
+meanManual <- mtcars %>% filter(am == "Manual") %>% summarise(mean = mean(mpg))
+kable(data.frame(Transmission, Means = c(meanAuto$mean, meanManual$mean)))
+```
+
+The mean, as shown in the table suggest a higher value for manual transmission. Figure 2 shows this exactly.
+
+
+## Regression Analysis
+
+Lets create a model with mpg as the outcome and am as the predictor.
+
+```{r}
+fit<- lm(mpg ~ factor(am), mtcars)
+summary(fit)
+confint(fit)
+```
+
+As seen in the summary. The increase in mpg is higher with a manual transmission. But considering the other variables, it may not be that way, as suggested by the Adjusted R-squared of 33.85%. Now lets compare the other variables.
+
+```{r}
+fit6 <- update(fit, mpg ~ am + cyl + disp + hp + drat + wt + qsec + vs + gear + carb)
+fit5 <- update(fit, mpg ~ am + cyl + disp + hp + drat + wt + qsec + vs + gear)
+fit4 <- update(fit, mpg ~ am + cyl + disp + hp + drat + wt + qsec + vs)
+fit3 <- update(fit, mpg ~ am + cyl + disp + hp + drat + wt + qsec)
+fit2 <- update(fit, mpg ~ am + cyl + disp + hp + wt)
+
+anova(fit, fit2, fit3, fit4, fit5, fit6)
+
+```
+
+After comparing different variable in the model it is clear the the second model _(lm = mpg ~ am + cyl + disp + hp + wt)_ has the more significant p-value.
+
+```{r}
+summary(fit2)
+```
+
+Now, our Adjusted R-squared value is 82.73%. Now we can be sure that our model explains 85.51% of the variance. Plots for correlation between variables are shown in figure 3 and residual plots in figure 4.
+
+
+## Conclusion
+
+
+So, having the model _mpg ~ am + cyl + disp + hp + wt_, we can expect an increase of 1.55 MPG, holding the other variables constant when the transmission is manual. However, variables like cyl, hp and wt can decrease it, logically.
+
+- Is an automatic or manual transmission better for MPG?
+Acording our model, manual transmission is better for MPG.
+
+- Quantify the MPG difference between automatic and manual transmissions
+_1.55 MPG increase holding cyl, wt, disp and hp constant._
+
+
+## Apendix
+
+- Figure 1
+```{r figure1}
+mtcars %>% ggplot(aes(x = mpg, fill = am)) +
+      geom_histogram(color = "black") +
+      facet_grid(. ~ am) +
+      labs(title = "Manual vs Automatic") +
+      guides(fill = "none", color = "none")
+```
+
+- Figure 2
+```{r figure2}
+mtcars %>% ggplot(aes(x = am, y = mpg, color = am)) +
+      geom_boxplot()
+```
+
+- Figure 3
+```{r figure 3}
+library(GGally)
+modelData <- mtcars %>% dplyr::select(mpg, am, cyl, disp, hp, wt)
+ggpairs(modelData, lower = list(continuous = "smooth"), wrap = c(method = "loess"))
+```
+
+- Figure 4
+```{r}
+par(mfrow = c(2,2))
+plot(fit2)
+```
+

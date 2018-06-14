@@ -1,0 +1,156 @@
+---
+title: "Weather Events Consequences for Population  Health and Economics"
+output: 
+  html_document:
+      keep_md: true
+---
+      
+```{r setoptions, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, fig.align='center', fig.width=10, results = "hide")
+library(lubridate); library(plyr); library(dplyr)
+library(ggplot2); library(timeDate); library(xtable)
+```
+
+#Abstract
+This research looks into the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database to explore different types of events that are most harmful with respect to population health and its economic consequences.
+
+#Introduction
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+
+#Data Processing
+##Harmful Event Types
+
+###Loading the data
+
+```{r loading}
+if(!file.exists("StormData.csv.bs2")){
+      url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+      download.file(url, destfile = "StormData.csv.bz2")
+}
+stormData <- read.csv(file = "StormData.csv.bz2", header = TRUE, sep = ",")
+```
+
+First 5 rows of the data.
+
+```{r introduction, results = "asis"}
+xth <- xtable(head(stormData, 5), auto = TRUE)
+print(xth, type = "html")
+```
+
+###Data Wrangling
+For the first objective, explore if there's a correlation between type of events and population health.
+After selecting only the columns necessary, it would be important to know which are the top 10 event types with more Injuries and Fatalities separately.
+
+```{r processingData}
+evHeData <- stormData %>%
+      select(EVTYPE, FATALITIES, INJURIES)
+evGroup <- evHeData %>%
+      group_by(EVTYPE) %>%
+      summarise(Total_Fatalities = sum(FATALITIES), 
+                Total_Injuries = sum(INJURIES))
+
+```
+
+As is expected, not necessesarily the most fatal event is the one with the highest injuries reported. So, it would be better to know this differences between event types.
+
+```{r tables_and_graphs, results = "asis"}
+topInj <- evGroup %>% top_n(10, Total_Injuries) %>% arrange(desc(Total_Injuries))
+topFat <- evGroup %>% top_n(10, Total_Fatalities) %>% arrange(desc(Total_Fatalities))
+
+xh <- xtable(topInj[,], auto = TRUE)
+print(xh, type = "html")
+
+xt <- xtable(topFat[,], auto = TRUE)
+print(xt, type = "html")
+
+topInj %>%
+      ggplot(aes(x = reorder(EVTYPE, -Total_Injuries), y = Total_Injuries, fill = Total_Fatalities, label = TRUE)) +
+      geom_bar(stat = "identity") +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+      labs(title = "Top 10 Event Types with Highest Injuries", x = "Event type", y = "Injuries") + 
+      guides(fill = "none")
+
+```
+
+
+Undoubtebly, Tornado is the most fatal event type. It has a wide separate range that stands out from the others. Nevertheless, the consequent ones are not in the same order, or are the same, in both lists.
+
+##Economic Consequences
+
+Columns in Storm Data that quantify economic are PROPDMG and CROPDMG, corresponding to Property Damage and Crop Damage. To evaluate the damage, expressed in $USD, it is provided two columns (PROPDMGEXP & CROPDMGEXP) that define nomenclature for this quantity.
+
+For Damage Property:
+`r levels(stormData$PROPDMGEXP)`
+
+For Crop Damage:
+For Damage Property:
+`r levels(stormData$CROPDMGEXP)`
+
+```{r dataWrangEconomic, results="asis"}
+nom <- union(stormData$PROPDMGEXP, stormData$CROPDMGEXP)
+nom <- tbl_df(nom)
+nom <- nom %>% bind_cols(exp = c(10^3, 10^6, 0, 10^9, 10^6, 1, 10, 10, 10, 0, 10, 10, 10,
+                         10^2, 10, 10^2, 0, 10, 10, 10^3))
+
+ecoData <- stormData %>%
+      select(EVTYPE, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP) %>%
+      mutate(PROPDMG = PROPDMG * nom$exp[match(PROPDMGEXP, nom$value)],
+             CROPDMG = CROPDMG * nom$exp[match(CROPDMGEXP, nom$value)]) %>%
+      group_by(EVTYPE) %>%
+      summarise(Total_Property_Damage = sum(PROPDMG), Total_Crop_Damage = sum(CROPDMG))
+
+topProp <- ecoData %>% select(EVTYPE, Total_Property_Damage) %>%
+      top_n(10, Total_Property_Damage) %>% arrange(desc(Total_Property_Damage))
+topCrop <- ecoData %>% select(EVTYPE, Total_Crop_Damage) %>%
+      top_n(10, Total_Crop_Damage) %>% arrange(desc(Total_Crop_Damage))
+
+
+xh <- xtable(topProp[,], auto = TRUE)
+"Top 10 Event Types with highest Property Damage"
+print(xh, type = "html")
+"Top 10 Event Types with Highest Crop Damage"
+xt <- xtable(topCrop[,], auto = TRUE)
+print(xt, type = "html")
+
+```
+
+
+```{r}
+topProp %>%
+      ggplot(aes(x = reorder(EVTYPE, -Total_Property_Damage), y = Total_Property_Damage, fill = Total_Property_Damage, label = TRUE)) +
+      geom_bar(stat = "identity") +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+      labs(title = "Top 10 Event Types with Highest Property Damage", x = "Event type", y = "Property Damage ($USD)") + 
+      guides(fill = "none")
+
+topCrop %>%
+      ggplot(aes(x = reorder(EVTYPE, -Total_Crop_Damage), y = Total_Crop_Damage, fill = Total_Crop_Damage, label = TRUE)) +
+      geom_bar(stat = "identity") +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+      labs(title = "Top 10 Event Types with Highest Crop Damage", x = "Event type", y = "Crop Damage ($USD)") + 
+      guides(fill = "none")
+```
+
+
+#Results
+After exploring the data it is possible to answer if certain event types has economic consequences and how they affect to population health.
+
+As we show in the previous section, for Population Health, those event types that have the highest injuries are not necessarily the same that have the highest fatalities. In the end, the most harmful event types are:
+
+```{r, result = "asis"}
+xr <- xtable(topFat[,], auto = TRUE)
+print(xr, type = "html")
+```
+Regarding economic consequences, as shown in the plot, the event types that report the highest property damage and crop damage are:
+
+```{r, result = "asis"}
+xz <- xtable(topProp[,], auto = TRUE)
+print(xz, type = "html")
+
+
+xw <- xtable(topCrop[,], auto = TRUE)
+print(xw, type = "html")
+```

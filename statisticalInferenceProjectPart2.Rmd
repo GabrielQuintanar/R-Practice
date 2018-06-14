@@ -1,0 +1,141 @@
+---
+title: 'Statistical Inference Project Part 2: Basic Inferential Data Analysis'
+author: "Gabriel Quinmat"
+date: "6 de mayo de 2018"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setoptions, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, fig.align='center', fig.width=10)
+library(plyr); library(dplyr)
+library(ggplot2);
+```
+
+## Overview
+Now in the second portion of the project, we're going to analyze the ToothGrowth data in the R datasets package.
+
+Load the ToothGrowth data and perform some basic exploratory data analyses
+Provide a basic summary of the data.
+Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose. (Only use the techniques from class, even if there's other approaches worth considering)
+State your conclusions and the assumptions needed for your conclusions.
+
+## Loading and Analysis
+
+
+We are going to work with ToothGrow dataset. The Effect of Vitamin C on Tooth Growth in Guinea Pigs.
+```{r loadingData}
+library("datasets")
+data("ToothGrowth")
+summary(ToothGrowth)
+```
+
+
+Looking the data we know now that we have 60 observations, in which 30 correspond to guinea pigs that were given vitamin c and the others Orange Juice. We can separate them in differents datasets to analyze them.
+
+```{r separating}
+ojT <- ToothGrowth %>% filter(supp == "OJ") %>% select(len, dose)
+vcT <- ToothGrowth %>% filter(supp == "VC") %>% select(len, dose)
+```
+
+A quick summary of both datasets:
+
+
+For supp OJ:
+```{r} 
+summary(ojT)
+```
+
+
+For supp VC:
+```{r} 
+summary(vcT)
+```
+
+
+
+```{r quickPlots}
+ToothGrowth %>% ggplot(aes(x = dose, y = len, fill = supp)) +
+      geom_bar(position = "dodge", stat = "identity") +
+      labs(title = "Tooth Length ")
+```
+
+So we can see how tooth length is increasing as supplement dose increases. At first, vitamin C is not effecttive as orange juice, but with 2 mm/day is greater.
+
+```{r statValues}
+muOj <- mean(ojT$len)
+muVc <- mean(vcT$len)
+
+varOj <- var(ojT$len)
+varVc <- var(vcT$len)
+
+sdOj <- sd(ojT$len)
+sdVc <- sd(vcT$len)
+```
+
+Orange Juice Length Mean: `r muOj`
+
+Orange Juice Length Variance: `r varOj`
+
+Orange Juice Length Standard Deviation: `r sdOj`
+
+
+
+Vitamin C Length Mean: `r muVc`
+
+Vitamin C Length Variance: `r varVc`
+
+Vitamin C Length Standard Deviation: `r sdVc`
+
+
+
+## Hypothesis Test & Confidence Intervals
+
+Gosset's distribution will be a good distribution for testing as the dataset is not large. 
+
+For making t test, we need to get the difference between both supplements. Let's make a hypothesis
+
+H0 <- muOj - muVc = 0
+Ha <- muOj - muVc != 0
+
+
+### Length tooth test
+```{r lengthTest}
+test <- t.test(ojT$len, vcT$len, paired = TRUE)
+```
+
+
+Now he know the confidence interval:
+`r test$conf.int`
+
+
+Interval does not cross zero.
+
+And a P-Value:
+`r test$p.value`
+
+
+And P-Value is close to 0.
+
+
+Thus, we can see that there is a difference between supplement and we can reject the null hypothesis.
+
+
+### Dose and Length test
+
+We will select only 1.0 and 2.0 doses.
+```{r dlTest}
+toothDose <- ToothGrowth %>% filter(dose == 1.0 | dose == 2.0)
+test2 <- t.test(len~dose, paired = TRUE, data = toothDose)
+```
+
+Confidence interval:
+`r test2$conf.int`
+
+
+And P-Value:
+`r test2$p.value`
+
+
+Again, but more significantly, we have a confidence interval that does not across zero and a p-value close to zero. so we can reject the null hypothesis.

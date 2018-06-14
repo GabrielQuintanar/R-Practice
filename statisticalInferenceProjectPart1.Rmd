@@ -1,0 +1,106 @@
+---
+title: 'Statistical Inferece Project: Exponential Distribution'
+output:
+  html_document:
+    keep_md: yes
+---
+      
+```{r setoptions, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, fig.align='center', fig.width=10, results = "hide")
+library(plyr); library(dplyr)
+library(ggplot2);
+```
+
+## Overview
+The aim of this project is to compare the _Exponential Distribution_ and compare it with the _Central Limit Theorem_.This simulations (One thousand) were computated with a lambda = 0.2, distribution averages of 40 exponentials and using the function _rexp()_.
+
+
+## Simulations
+For purposes of reproducibility, is necessary to use a specific seed for all simulations. In this case, 5 will be the seed. The exponential distribution can be simulated in R with rexp(n, lambda) where lambda is the rate parameter (0.2).
+
+```{r simulations}
+lambda <- 0.2
+nSimulations <- 1000
+n <- 40
+exps <- NULL
+rows <- seq(1:1000)
+
+set.seed(5)
+
+for (i in rows) exps <- c(exps, mean(rexp(n, lambda)))
+samples <- cbind(rows, exps)
+sampleDF <- tbl_df(samples)
+```
+
+These are the first 5 rows of our 1000 simulations.
+
+`r head(samples, 5)`
+
+
+## Sample Mean versus Theoretical Mean
+
+The mean of exponential distribution is 1/lambda = 1/0.2 = _5_. This is the theoretical mean taht will be compared to the sample mean.
+
+```{r plottingMeans}
+theoMean <- 1/lambda
+sampleMean <- mean(sampleDF$exps)
+
+
+sampleDF %>% ggplot(aes(x = exps)) +
+      geom_histogram(color = "black", fill = "blue", alpha = 0.5) +
+      labs(title = "Theoretical Mean VS Sample Mean", x = "Exp Means", y = "Counts") +
+      guides(fill = "none", color = "none") +
+      geom_vline(xintercept = 5, color = "red", size = 2)
+```
+
+Sample Mean: `r sampleMean`
+
+Theoretical Mean: `r theoMean`
+
+We are close to the theoretical mean as expected from CLT.
+
+
+## Sample Variance versus Theoretical Variance
+
+
+The standard deviation of exponential distribution is (1/lambda)/sqrt(n). So its variance is (1/lambda)^2/n.
+```{r plottingStds}
+theoVar <- (1/lambda)^2/n
+sampleVar <- var(sampleDF$exps)
+sampleDF %>% ggplot() +
+      coord_cartesian(xlim = c(0, 2)) + 
+      geom_vline(xintercept = theoVar, color = "red", size = 2) +
+      geom_vline(xintercept = sampleVar, color = "blue", size = 2) +
+      labs(title = "Theoretical Variance VS Sample Variance",
+           x = "Variance")
+```
+
+Theoretical Variance: `r theoVar`
+
+Sample Variance: `r sampleVar`
+
+Here, both values are relatively close, so they match with CLT.
+
+
+## Distribution
+
+### Is Exponential Distribution approximately to Normal Distribution?
+
+It might be already easy to see that exponential has a similar distribution as it is centered. The next figure represents the density of the exponential means.
+
+```{r plottingDist}
+meanX <- seq(min(sampleDF$exps), max(sampleDF$exps), length.out = nSimulations)
+meanY <- density(sampleDF$exps)
+
+normDF <- tbl_df(cbind(meanX, meanY))
+
+
+sampleDF %>% ggplot(aes(x = exps, y = ..density..)) +
+      geom_histogram(color = "black", fill = "blue", alpha = 0.5) +
+      labs(title = "Exponential Distribution VS Normal Distribution", x = "Exp Means", y = "Counts") +
+      guides(fill = "none", color = "none") +
+      geom_vline(xintercept = 5, color = "red", size = 2) +
+      geom_density(kernel = "gaussian", size = 1)
+```
+
+As it can be seen, the density centered with the theoretical mean.

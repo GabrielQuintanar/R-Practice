@@ -62,3 +62,19 @@ prediction <- predict(fit, newdata = testing)
 missClass = function(values,prediction){sum(((prediction > 0.5)*1) != values)/length(values)}
 missClass(trainSA$chd, predict(fit, newdata = trainSA))
 missClass(testSA$chd, predict(fit, newdata = testSA))
+
+
+###################################
+
+library(ElemStatLearn)
+data(vowel.train)
+data(vowel.test)
+
+vowel.test$y <- factor(vowel.test$y)
+vowel.train$y <- factor(vowel.train$y)
+
+set.seed(33833)
+
+fit <- train(y ~ ., data = vowel.train, method = "rf", prox = TRUE)
+
+varImp(fit)

@@ -44,5 +44,43 @@ fit <- train(diagnosis ~ ., data = training,  method = "rf")
 fit2 <- train(diagnosis ~ ., data = training,  method = "gbm", verbose = FALSE)
 fit3 <- train(diagnosis ~ ., data = training,  method = "lda")
 
+test1 <- predict(fit, testing)
+test2 <- predict(fit2, testing)
+test3 <- predict(fit3, testing)
 
-predDF <- data.frame(fit, fit2, fit3, diagnosis = abData)
+
+predDF <- data.frame(fit1 = test1, fit2 = test2, fit3 = test3, diagnosis = testing$diagnosis)
+
+combFit <- train(diagnosis ~ ., data = predDF, method = "rf")
+
+combTest <- predict(combFit, predDF)
+
+confusionMatrix(combTest, predDF$diagnosis)$overall[1]
+
+
+
+
+
+
+
+
+
+############################################
+
+set.seed(3523)
+
+library(AppliedPredictiveModeling)
+
+data(concrete)
+
+inTrain = createDataPartition(concrete$CompressiveStrength, p = 3/4)[[1]]
+
+training = concrete[ inTrain,]
+
+testing = concrete[-inTrain,]
+
+set.seed(233)
+
+fit <- train(CompressiveStrength ~ ., data = training, method="lasso")
+library(elasticnet)
+plot.enet(fit$finalModel, xvar = "penalty", use.color = TRUE)

@@ -84,3 +84,54 @@ set.seed(233)
 fit <- train(CompressiveStrength ~ ., data = training, method="lasso")
 library(elasticnet)
 plot.enet(fit$finalModel, xvar = "penalty", use.color = TRUE)
+
+
+
+
+###############################################
+
+
+library(lubridate) # For year() function below
+
+dat = read.csv("~/gaData.csv")
+
+training = dat[year(dat$date) < 2012,]
+
+testing = dat[(year(dat$date)) > 2011,]
+
+tstrain = ts(training$visitsTumblr)
+
+library(forecast)
+fit <- bats(tstrain, use.parallel = TRUE, num.cores = 4)
+fcast <- forecast(fit, level = 95, h = dim(testing)[1])
+plot(fcast); lines(testing, col="red")
+
+sum(fcast$lower < testing$visitsTumblr &
+          testing$visitsTumblr < fcast$upper)/dim(testing)[1]
+
+
+#############################################
+
+set.seed(3523)
+
+library(AppliedPredictiveModeling)
+
+data(concrete)
+
+inTrain = createDataPartition(concrete$CompressiveStrength, p = 3/4)[[1]]
+
+training = concrete[ inTrain,]
+
+testing = concrete[-inTrain,]
+
+set.seed(325)
+library(e1071)
+svmModel <- svm(CompressiveStrength ~ ., data = training)
+svmPred <- predict(svmModel, testing)
+err <- testing$CompressiveStrength - svmPred
+RMSE(svmPred, testing$CompressiveStrength)
+
+plot(svmPred, testing$CompressiveStrength, 
+     pch=20, cex=1, 
+     col=testing$Age, 
+     main= "Relationship between the svm forecast and actual values")
